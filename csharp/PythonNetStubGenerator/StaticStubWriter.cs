@@ -180,12 +180,10 @@ namespace PythonNetStubGenerator
         {
             sb.AppendLine();
 
-
             var externalGenerics = StaticClassScope.AccessibleGenerics.ToList();
             var newGenerics = Enumerable.Empty<Type>();
             using var classScope = new StaticClassScope(overloadClassName, newGenerics, false);
             WriteClassHeader(classScope, sb, overloadClassName, classArguments: new List<string>() { "abc.ABCMeta" });
-
 
             foreach (var type in types)
             {
@@ -214,7 +212,6 @@ namespace PythonNetStubGenerator
                 {
                     WriteTypeVariable(sb, arg, $"{prefix}{arg.ToPythonType()}", writeVariance: false);
                 }
-
 
                 if (types.Count > 1)
                     sb.Indent().AppendLine("@typing.overload");
@@ -897,7 +894,7 @@ namespace PythonNetStubGenerator
                 }
             }
 
-            var returnType = method is MethodInfo mi ? mi.ReturnType.ToPythonType() : "None";
+            var returnType = method is MethodInfo mi ? mi.ReturnParameter.ToPythonType() : "None";
 
             var parameters = GetParameters(method, !isStatic);
 
@@ -977,7 +974,7 @@ namespace PythonNetStubGenerator
             static string GetParameter(ParameterInfo it)
             {
                 var name = StaticPythonTypes.SafePythonName(it.Name);
-                var type = it.ParameterType.ToPythonType();
+                var type = it.ToPythonType();
                 var defaultValue = it.HasDefaultValue ? " = ..." : "";
                 return $"{name}: {type}{defaultValue}";
             }

@@ -35,7 +35,7 @@ namespace PythonNetStubTool
 
             Option<bool> addStubSuffixOption = new("--add-stubs-suffix")
             {
-                Description = "Add a '-stubs' suffix to generated stub folders (for Pycharm).",
+                Description = "Add a '-stubs' suffix to generated stub packages.",
                 Required = false
             };
 
@@ -86,7 +86,7 @@ namespace PythonNetStubTool
                 var assemblyPath = new FileInfo(pathStr.Trim());
                 if (!assemblyPath.Exists)
                 {
-                    Console.WriteLine($"error: can not find {assemblyPath}");
+                    Console.WriteLine($"error: cannot find {assemblyPath}");
                     return -1;
                 }
                 infos.Add(assemblyPath);

@@ -142,6 +142,7 @@ namespace PythonNetStubGenerator
         }
 
 
+
         public static string ToPythonType(this Type t, bool withGenericParams = true)
         {
             if (t == null || t == typeof(void))
@@ -228,6 +229,45 @@ namespace PythonNetStubGenerator
             return scope + cleanName;
         }
 
+        public static string ToPythonType(this ParameterInfo paramInfo, bool withGenericParams = true)
+        {
+            string typeName = paramInfo.ParameterType.ToPythonType(withGenericParams);
+
+            if (typeName.StartsWith("typing.Optional"))
+            {
+                return typeName;
+            }
+
+            bool isNullable = false;
+            var attributes = paramInfo.GetCustomAttributesData();
+            string[] fullNames =
+            {
+                "System.Runtime.CompilerServices.NullableContextAttribute",
+                "System.Runtime.CompilerServices.NullableAttribute"
+            };
+
+            foreach (string attrName in fullNames)
+            {
+                var attr = attributes.FirstOrDefault(attr => attr.AttributeType.FullName == attrName);
+                if (attr != null && attr.ConstructorArguments.Count > 0)
+                {
+                    // 0 = oblivious, 1 = not nullable, 2 = nullable
+                    if (attr.ConstructorArguments[0].Value is byte b && b == 2)
+                    {
+                        isNullable = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isNullable)
+            {
+                typeName = $"typing.Optional[{typeName}]";
+            }
+
+            return typeName;
+        }
+
         private static string GetScope(Type type)
         {
             var s = type.DeclaringType?.ToPythonType(false);
@@ -243,7 +283,6 @@ namespace PythonNetStubGenerator
 
             return "";
         }
-
 
 
         private static List<Type> GetGenerics(Type type)
