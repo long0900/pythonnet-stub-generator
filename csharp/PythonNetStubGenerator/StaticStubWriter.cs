@@ -103,9 +103,6 @@ namespace PythonNetStubGenerator
             sb.AppendLine();
 
             WriteType(sb, arrayType, nonGenericName);
-
-
-
         }
         public static void WriteClassHeader(
             StaticClassScope classScope,
@@ -206,7 +203,7 @@ namespace PythonNetStubGenerator
                 }
 
                 if (args.Length > 1)
-                    typeArgString = $"typing.Tuple[{typeArgString}]";
+                    typeArgString = $"tuple[{typeArgString}]";
 
                 foreach (var arg in args)
                 {
@@ -260,7 +257,6 @@ namespace PythonNetStubGenerator
             }
 
             sb.AppendLine();
-
         }
 
         private static bool WriteIndexers(StringBuilder sb, Type type)
@@ -683,7 +679,6 @@ namespace PythonNetStubGenerator
 
             sb.AppendLine();
 
-
             var className = $"{methodName}_MethodGroup";
 
             var currentGenerics = StaticClassScope.AccessibleGenerics.Select(it => it.ToPythonType()).CommaJoin();
@@ -714,15 +709,11 @@ namespace PythonNetStubGenerator
 
                 var callsToAdd = GetMethodCallers(infos, true);
 
-
                 foreach (var call in callsToAdd)
                 {
                     sb.Indent().AppendLine(call);
                 }
-
-
             }
-            sb.AppendLine();
         }
 
 
@@ -733,7 +724,7 @@ namespace PythonNetStubGenerator
             var existingSignatures = new HashSet<string>();
             foreach (var method in infos)
             {
-                var returnType = method.ReturnType.ToPythonType();
+                var returnType = method.ReturnParameter.ToPythonType();
 
                 if (skipHardGenerics && method.IsGenericMethodDefinition)
                     continue;
@@ -819,8 +810,7 @@ namespace PythonNetStubGenerator
         private static void WriteGenericMethodAccessors(
             StringBuilder sb,
             IEnumerable<MethodInfo> methods,
-            bool hasGenericOverloads
-            )
+            bool hasGenericOverloads)
         {
             var methodInfos = methods.ToList();
 
@@ -831,7 +821,6 @@ namespace PythonNetStubGenerator
 
             var aliasDictionary = new Dictionary<Type, string>();
             var aliases = new List<string>();
-
 
             for (var i = 0; i < templateArguments.Length; i++)
             {
@@ -846,7 +835,7 @@ namespace PythonNetStubGenerator
 
             var indexerTypes = aliases.Select(it => $"typing.Type[{it}]");
             var typeVarsString = indexerTypes.CommaJoin();
-            var indexerArgs = templateArguments.Length == 1 ? typeVarsString : $"typing.Tuple[{typeVarsString}]";
+            var indexerArgs = templateArguments.Length == 1 ? typeVarsString : $"tuple[{typeVarsString}]";
 
             var genericArguments = outerGenerics.Select(it => it.ToPythonType()).Concat(aliases);
 
@@ -856,21 +845,15 @@ namespace PythonNetStubGenerator
                 sb.Indent().AppendLine("@typing.overload");
             sb.Indent().AppendLine($"def __getitem__(self, t:{indexerArgs}) -> {returnTypeStr}: ...");
 
-
             sb.AppendLine();
-
 
             using (var classScope = new StaticClassScope(methodClassName, aliasDictionary.Keys, false))
             {
-
                 WriteClassHeader(classScope, sb, methodClassName, genericAliases: aliasDictionary);
                 var callLines = GetMethodCallers(methodInfos, false);
                 foreach (var line in callLines)
                     sb.Indent().AppendLine(line);
             }
-
-            sb.AppendLine();
-
         }
 
 
@@ -879,10 +862,11 @@ namespace PythonNetStubGenerator
             var isOperator = IsOperator(method);
             var isStatic = method.IsStatic && !isOperator;
 
-
             var methodName = method.IsConstructor ? "__init__" : method.Name;
+
             if (methodName == "<Clone>$")
                 return false;
+
             if (isOperator)
             {
                 methodName = ConvertOperatorName(method.Name);
@@ -894,10 +878,39 @@ namespace PythonNetStubGenerator
                 }
             }
 
-            var returnType = method is MethodInfo mi ? mi.ReturnParameter.ToPythonType() : "None";
-
             var parameters = GetParameters(method, !isStatic);
 
+            List<ParameterInfo> returnParams = new List<ParameterInfo>();
+            string returnType;
+
+            // add the actual return parameter to the returnParams list if it's not void
+            if (method is MethodInfo mi && mi.ReturnType != typeof(void))
+            {
+                returnParams.Add(mi.ReturnParameter);
+            }
+
+            // add any out/ref parameters to the returnParams list
+            // as they will be returned as a tuple with the return value (if not void) in python
+            foreach (var param in method.GetParameters())
+            {
+                if (param.IsOut || param.ParameterType.IsByRef)
+                {
+                    returnParams.Add(param);
+                }
+            }
+
+            if (returnParams.Count > 0)
+            {
+                returnType = returnParams.Select(p => p.ToPythonType()).CommaJoin();
+                if (returnParams.Count > 1)
+                {
+                    returnType = $"tuple[{returnType}]";
+                }
+            }
+            else
+            {
+                returnType = "None";
+            }
 
             // ReSharper disable StringLiteralTypo - python decorator
             if (isOverload)

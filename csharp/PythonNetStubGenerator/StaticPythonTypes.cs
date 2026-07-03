@@ -142,7 +142,6 @@ namespace PythonNetStubGenerator
         }
 
 
-
         public static string ToPythonType(this Type t, bool withGenericParams = true)
         {
             if (t == null || t == typeof(void))
@@ -199,9 +198,7 @@ namespace PythonNetStubGenerator
                 return GetGenericTypeParameterName(t);
             }
 
-
             var cleanName = t.CleanName();
-
 
             if (withGenericParams)
             {
